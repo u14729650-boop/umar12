@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Tournament Scoreboard</title>
+    <style>
+        /* --- CORE STYLES --- */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.5s;
+        }
+        
+        /* Handler Mode Styling (Default) */
+        body.handler-mode {
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        body.handler-mode header {
+            background-color: #007bff;
+        }
+        #handler-panel {
+            background-color: #fff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid #dc3545;
+        }
+
+        /* Public Mode Styling */
+        body.public-mode {
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        body.public-mode header {
+            background-color: #dc3545; /* Red accent for LIVE/Urgent */
+        }
+        body.public-mode .game-card {
+            background-color: #212121; /* Dark card background */
+            border: 2px solid #555;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+        }
+        body.public-mode .team-name {
+            color: #00bcd4; /* Light Blue */
+        }
+        body.public-mode .score {
+            color: #ffc107; /* Amber/Yellow for score */
+        }
+        body.public-mode .status.live {
+            color: #4caf50; /* Green */
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        /* --- SHARED LAYOUT STYLES --- */
+        header {
+            color: white;
+            padding: 20px 0;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        main {
+            width: 100%;
+            max-width: 1200px;
+            padding: 20px;
+        }
+        #scoreboard {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            padding: 30px 0;
+        }
+        .game-card {
+            border-radius: 8px;
+            padding: 20px;
+            width: 350px;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .teams-vs {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+        }
+        .team {
+            text-align: center;
+            flex: 1;
+        }
+        .team-name {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .score {
+            font-size: 3em;
+            font-weight: 900;
+            color: #dc3545;
+        }
+        .winning-team .team-name {
+            color: #28a745;
+        }
+        .status {
+            text-align: center;
+            font-weight: bold;
+            padding-top: 10px;
+            border-top: 1px dashed #eee;
+        }
+        .status.upcoming {
+            color: #ffc107;
+        }
+        .status.live {
+            color: #28a745;
+        }
+        .status.final {
+            color: #dc3545;
+        }
+        footer {
+            width: 100%;
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            margin-top: auto;
+        }
+
+        /* --- HANDLER INPUT STYLES (Only visible in Handler Mode) --- */
+        .team-input-group {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        .team-input {
+            flex: 1;
+        }
+        .team-input label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 3px;
+            font-size: 0.9em;
+        }
+        .team-input input[type="number"],
+        .team-input input[type="text"],
+        .team-input select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .update-controls {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            margin-top: 10px;
+        }
+        .update-controls > div {
+            flex: 1;
+        }
+        .update-controls button {
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+            width: 150px;
+            flex-shrink: 0;
+        }
+        .update-controls button:hover {
+            background-color: #218838;
+        }
+
+        /* Mode Selection Styling */
+        #mode-selector {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #fff;
+        }
+        .mode-button {
+            padding: 8px 15px;
+            cursor: pointer;
+            margin: 0 5px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .mode-button.active {
+            background-color: #007bff;
+            color: white;
+        }
+        #public-view-only-message {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #dc3545;
+            padding: 10px;
+            border: 1px solid #dc3545;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="header-title">ASL Basketball League</h1>
+        <p id="header-subtitle">Select Mode Below</p>
+    </header>
+    
+    <div id="mode-selector">
+        <label>Select View Mode:</label>
+        <button class="mode-button" id="handler-mode-btn">Handler Interface</button>
+        <button class="mode-button" id="public-mode-btn">Live Public Scoreboard</button>
+    </div>
+
+    <main id="app-container">
+        </main>
+
+    <footer>
+        <p id="footer-text">&copy; 2025 Basketball Scoreboard</p>
+    </footer>
+
+    <script>
+        // --- JAVASCRIPT LOGIC ---
+        
+        // Initial Game Schedule Data (used if localStorage is empty)
+        let tournamentGames = [
+            { id: 1, date: '14/10/2025', day: 'TUESDAY', time: '18:00', teamA: 'Bulls', scoreA: 0, teamB: 'Panthers', scoreB: 0, category: 'Boys', status: 'upcoming' },
+            { id: 2, date: '14/10/2025', day: 'TUESDAY', time: '18:45', teamA: 'Mystics', scoreA: 0, teamB: 'Valkyries', scoreB: 0, category: 'Girls', status: 'upcoming' },
+            { id: 3, date: '14/10/2025', day: 'TUESDAY', time: '19:30', teamA: 'Mercury', scoreA: 0, teamB: 'Storms', scoreB: 0, category: 'Girls', status: 'upcoming' },
+            { id: 4, date: '15/10/2025', day: 'Wednesday', time: '07:00', teamA: 'Bulls', scoreA: 0, teamB: 'Hawks', scoreB: 0, category: 'Boys', status: 'upcoming' },
+            { id: 5, date: '15/10/2025', day: 'Wednesday', time: '17:00', teamA: 'Mystics', scoreA: 0, teamB: 'Mercury', scoreB: 0, category: 'Girls', status: 'upcoming' },
+        ];
+        
+        const STORAGE_KEY = 'tournamentScoreboardData';
+        let currentMode = null; 
+        let refreshInterval = null;
+
+        // --- DATA MANAGEMENT ---
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(tournamentGames));
+            } catch (error) {
+                console.error("Error saving to local storage:", error);
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                if (data) {
+                    // Update the global array with stored data
+                    tournamentGames = JSON.parse(data); 
+                    return true;
+                }
+            } catch (error) {
+                console.error("Error loading from local storage:", error);
+            }
+            return false;
+        }
+
+
+        // --- RENDERING FUNCTIONS (SHARED) ---
+
+        function createGameCard(game) {
+            const winnerA = game.scoreA > game.scoreB ? 'winning-team' : '';
+            const winnerB = game.scoreB > game.scoreA ? 'winning-team' : '';
+            const displayDate = game.date || game.day || '';
+            const displayTime = game.status === 'live' || game.status === 'final' ? game.time : `Scheduled: ${game.time}`;
+
+            return `
+                <div class="game-card">
+                    <div class="game-info">
+                        <span>${displayDate} - ${game.category} - ${displayTime}</span>
+                    </div>
+                    <div class="teams-vs">
+                        <div class="team ${winnerA}">
+                            <div class="score">${game.scoreA}</div>
+                            <div class="team-name">${game.teamA}</div>
+                        </div>
+                        <div class="vs">VS</div>
+                        <div class="team ${winnerB}">
+                            <div class="score">${game.scoreB}</div>
+                            <div class="team-name">${game.teamB}</div>
+                        </div>
+                    </div>
+                    <div class="status ${game.status}">
+                        ${game.status === 'live' ? 'LIVE' : (game.status === 'final' ? 'FINAL' : 'UPCOMING')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderScoreboard() {
+            let scoreboardElement = document.getElementById('scoreboard');
+            if (!scoreboardElement) return;
+
+            const displayGames = tournamentGames.filter(game => game.teamA && game.teamB && game.teamA.indexOf('Pool') === -1); 
+            const cardsHTML = displayGames.map(createGameCard).join('');
+
+            if (displayGames.length === 0) {
+                 scoreboardElement.innerHTML = `<p style="color: ${currentMode === 'public' ? '#bbb' : '#333'};">No games currently scheduled or loading data...</p>`;
+            } else {
+                scoreboardElement.innerHTML = cardsHTML;
+            }
+        }
+
+
+        // --- HANDLER MODE LOGIC ---
+
+        function createGameControlPanel(game) {
+            const gameIdentifier = `Game ${game.id} (${game.category})`;
+            return `
+                <div class="game-control" data-game-id="${game.id}">
+                    <h3>${gameIdentifier}: ${game.teamA} vs ${game.teamB}</h3>
+                    
+                    <div class="team-input-group">
+                        <div class="team-input">
+                            <label for="nameA-${game.id}">Team A Name:</label>
+                            <input type="text" id="nameA-${game.id}" value="${game.teamA}">
+                            <label for="scoreA-${game.id}">Team A Score:</label>
+                            <input type="number" id="scoreA-${game.id}" value="${game.scoreA}" min="0">
+                        </div>
+                        <div class="team-input">
+                            <label for="nameB-${game.id}">Team B Name:</label>
+                            <input type="text" id="nameB-${game.id}" value="${game.teamB}">
+                            <label for="scoreB-${game.id}">Team B Score:</label>
+                            <input type="number" id="scoreB-${game.id}" value="${game.scoreB}" min="0">
+                        </div>
+                    </div>
+
+                    <div class="update-controls">
+                        <div>
+                            <label for="time-${game.id}">Time/Period:</label>
+                            <input type="text" id="time-${game.id}" value="${game.time}" placeholder="e.g., 3rd Quarter (4:32)">
+                        </div>
+                        <div>
+                            <label for="status-${game.id}">Game Status:</label>
+                            <select id="status-${game.id}">
+                                <option value="upcoming" ${game.status === 'upcoming' ? 'selected' : ''}>Upcoming</option>
+                                <option value="live" ${game.status === 'live' ? 'selected' : ''}>LIVE</option>
+                                <option value="final" ${game.status === 'final' ? 'selected' : ''}>Final</option>
+                            </select>
+                        </div>
+                        <button onclick="updateGame(${game.id})">Update Scoreboard</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderHandlerPanel() {
+            const scorableGames = tournamentGames.filter(game => game.teamA && game.teamB && game.teamA.indexOf('Pool') === -1); 
+            const controlsHTML = scorableGames.map(createGameControlPanel).join('');
+            
+            const handlerContent = `
+                <section id="handler-panel">
+                    <h2>Game Controls</h2>
+                    ${controlsHTML}
+                </section>
+
+                <section id="scoreboard-display">
+                    <h2>Public Scoreboard Preview</h2>
+                    <div id="scoreboard"></div>
+                </section>
+            `;
+
+            document.getElementById('app-container').innerHTML = handlerContent;
+            renderScoreboard();
+        }
+
+        // Global function called by handler buttons
+        function updateGame(gameId) {
+            const gameIndex = tournamentGames.findIndex(g => g.id === gameId);
+            if (gameIndex === -1) return;
+
+            const newScoreA = parseInt(document.getElementById(`scoreA-${gameId}`).value) || 0;
+            const newScoreB = parseInt(document.getElementById(`scoreB-${gameId}`).value) || 0;
+            const newTeamA = document.getElementById(`nameA-${gameId}`).value;
+            const newTeamB = document.getElementById(`nameB-${gameId}`).value;
+            const newTime = document.getElementById(`time-${gameId}`).value;
+            const newStatus = document.getElementById(`status-${gameId}`).value;
+
+            tournamentGames[gameIndex].scoreA = newScoreA;
+            tournamentGames[gameIndex].scoreB = newScoreB;
+            tournamentGames[gameIndex].teamA = newTeamA;
+            tournamentGames[gameIndex].teamB = newTeamB;
+            tournamentGames[gameIndex].time = newTime;
+            tournamentGames[gameIndex].status = newStatus;
+
+            saveToLocalStorage();
+            renderScoreboard(); 
+            renderHandlerPanel(); // Re-render panel to ensure fields match latest data
+        }
+
+
+        // --- PUBLIC MODE LOGIC ---
+
+        function renderPublicView() {
+            const publicContent = `
+                <section id="scoreboard-display">
+                    <div id="public-view-only-message">
+                        This is the LIVE Public Scoreboard. Data updates every 5 seconds.
+                    </div>
+                    <div id="scoreboard"></div>
+                </section>
+            `;
+            document.getElementById('app-container').innerHTML = publicContent;
+            
+            // Initial render
+            loadFromLocalStorage();
+            renderScoreboard();
+
+            // Set up auto-refresh
+            refreshInterval = setInterval(() => {
+                loadFromLocalStorage();
+                renderScoreboard();
+            }, 5000); 
+        }
+
+        // --- MODE SELECTION ---
+
+        function setMode(mode) {
+            // Clear existing interval if switching from public mode
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+            
+            currentMode = mode;
+            const body = document.body;
+            const headerTitle = document.getElementById('header-title');
+            const headerSubtitle = document.getElementById('header-subtitle');
+
+            body.className = `${mode}-mode`;
+            document.querySelectorAll('.mode-button').forEach(btn => btn.classList.remove('active'));
+
+            if (mode === 'handler') {
+                document.getElementById('handler-mode-btn').classList.add('active');
+                headerTitle.textContent = 'Tournament Scoreboard **HANDLER**';
+                headerSubtitle.textContent = 'Update Game Details and Scores';
+                renderHandlerPanel();
+                // Ensure handler is saving the initial data
+                saveToLocalStorage(); 
+            } else if (mode === 'public') {
+                document.getElementById('public-mode-btn').classList.add('active');
+                headerTitle.textContent = 'LIVE Tournament Scoreboard';
+                headerSubtitle.textContent = 'Real-Time Game Scores';
+                renderPublicView();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('handler-mode-btn').addEventListener('click', () => setMode('handler'));
+            document.getElementById('public-mode-btn').addEventListener('click', () => setMode('public'));
+
+            // Attempt to load handler data first
+            if (!loadFromLocalStorage()) {
+                // If no data is stored, save the default schedule
+                saveToLocalStorage();
+            }
+
+            // Default to showing the Handler interface initially
+            setMode('handler');
+        });
+    </script>
+</body>
+</html> 	    
